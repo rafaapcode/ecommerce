@@ -4,8 +4,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import clsx from "clsx";
 import { ClerkProvider } from "@clerk/nextjs";
-import {ptBR} from "@clerk/localizations";
-
+import { ptBR } from "@clerk/localizations";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
