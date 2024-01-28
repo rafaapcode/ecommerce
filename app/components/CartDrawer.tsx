@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCartStore } from "../store"
 import { formatPrice } from "../lib/utils";
+import CheckoutButton from "./CheckoutButton";
 
 export default function CartDrawer() {
     const useStore = useCartStore();
@@ -33,11 +34,8 @@ export default function CartDrawer() {
                 }
 
                 {
-                    useStore.cart.length > 0 && (
-                        <div>
-                            <p className="text-teal-600 font-bold">Total: {formatPrice(totalPrice)}</p>
-                            <button className="w-full rounded-md bg-teal-600 text-white py-2 mt-2">Finalizar Compra</button>
-                        </div>
+                    useStore.cart.length > 0 && useStore.onCheckout == 'cart' && (
+                        <CheckoutButton totalPrice={totalPrice} />
                     )
                 }
             </div>
