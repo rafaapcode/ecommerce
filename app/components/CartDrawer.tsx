@@ -7,6 +7,10 @@ import { formatPrice } from "../lib/utils";
 export default function CartDrawer() {
     const useStore = useCartStore();
 
+    const totalPrice = useStore.cart.reduce((acc, item) => {
+        return acc + item.price! * item.quantity!;
+    }, 0);
+
     return (
         <div onClick={() => useStore.toggleCart()} className="fixed w-full h-screen bg-black/25 left-0 top-0 z-50">
             <div onClick={(e) => e.stopPropagation()} className="absolute bg-slate-600 right-0 top-0 w-1/3 h-screen p-8 overflow-y-scroll">
@@ -26,6 +30,15 @@ export default function CartDrawer() {
 
                         </div>
                     ))
+                }
+
+                {
+                    useStore.cart.length > 0 && (
+                        <div>
+                            <p className="text-teal-600 font-bold">Total: {formatPrice(totalPrice)}</p>
+                            <button className="w-full rounded-md bg-teal-600 text-white py-2 mt-2">Finalizar Compra</button>
+                        </div>
+                    )
                 }
             </div>
         </div>
