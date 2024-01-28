@@ -5,7 +5,7 @@ import { Product } from "./types/ProductType";
 type CartState = {
     cart: Product[];
     addProduct: (product: Product) => void;
-    // removeProduct: (productId: string) => void;
+    removeProduct: (product: Product) => void;
     isOpen: boolean;
     toggleCart: () => void;
 }
@@ -18,7 +18,7 @@ export const useCartStore = create<CartState>()(
             if (productExist) {
                 const updatedCart = state.cart.map((p) => {
                     if (p.id === product.id) {
-                        return { ...p, quantity: p.quantity ? p.quantity++ : 1 }
+                        return { ...p, quantity: p.quantity ? p.quantity += 1 : 1 }
                     }
                     return p;
                 })
@@ -30,5 +30,22 @@ export const useCartStore = create<CartState>()(
         }),
         isOpen: false,
         toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
+        removeProduct: (product: Product) => set((state) => {
+            const productExist = state.cart.find((p) => p.id === product.id);
+            if (productExist && productExist.quantity! > 1) {
+                const updatedCart = state.cart.map((p) => {
+                    if (p.id === product.id) {
+                        return { ...p, quantity: p.quantity! - 1 }
+                    }
+
+                    return p;
+                })
+
+                return { cart: updatedCart }
+            } else {
+                const filteredCart = state.cart.filter((p) => p.id !== product.id);
+                return { cart: filteredCart }
+            }
+        }),
     }), { name: 'cart-storage' })
 );
