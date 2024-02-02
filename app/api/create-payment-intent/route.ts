@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { Product } from "@/app/types/ProductType";
 import { auth } from "@clerk/nextjs";
 import stripe from "@/app/lib/stripe";
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     const { items, payment_intent_id } = await req.json();
 
     if (!userId) {
-        return new Response('Unauthorized', { status: 401 });
+        return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const customerIdTemp = 'cus_PUJhe0GfWh49x0';
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
                 return new Response('Order not found', { status: 404 });
             }
 
-            return Response.json({ paymentIntent: update_intent }, { status: 200 });
+            return NextResponse.json({ paymentIntent: update_intent }, { status: 200 });
         }
     } else {
         const paymentIntent = await stripe.paymentIntents.create({
@@ -90,6 +91,6 @@ export async function POST(req: Request) {
             data: orderData
         });
 
-        return Response.json({ paymentIntent }, { status: 200 });
+        return NextResponse.json({ paymentIntent }, { status: 200 });
     }
 };
