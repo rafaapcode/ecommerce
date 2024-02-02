@@ -1,96 +1,96 @@
-import { NextResponse } from 'next/server';
-import { Product } from "@/app/types/ProductType";
-import { auth } from "@clerk/nextjs";
+import { auth } from '@clerk/nextjs';
 import stripe from "@/app/lib/stripe";
-import prisma from "@/app/lib/prisma";
+import { Product } from '@/app/types/ProductType';
+import prisma from '@/app/lib/prisma';
+import { NextResponse } from 'next/server';
 
 const calculateOrderAmount = (items: Product[]) => {
-    const totalPrice = items.reduce((acc, item) => {
-        return acc + item.price! * item.quantity!;
-    }, 0);
-    return totalPrice;
+  const totalPrice = items.reduce((acc, item) => {
+    return acc + item.price! * item.quantity!
+  }, 0)
+  return totalPrice
 }
 
 export async function POST(req: Request) {
-    const { userId } = auth();
-    const { items, payment_intent_id } = await req.json();
+  const { userId } = auth();
+  const { items, payment_intent_id } = await req.json();
 
-    if (!userId) {
-        return new NextResponse('Unauthorized', { status: 401 });
+  if(!userId){
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const customerIdTemp = 'cus_OvJFglQZ0DNK3i';
+  const total = calculateOrderAmount(items);
+
+  const orderData = {
+    user: { connect: { id: 1 } },
+    amount: total,
+    currency: 'brl',
+    status: 'pending',
+    paymentIntentID: payment_intent_id,
+    products: {
+      create: items.map((item: Product) => ({
+        name: item.name,
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.image
+      }))
     }
+  }
 
-    const customerIdTemp = 'cus_PUJhe0GfWh49x0';
-    const total = calculateOrderAmount(items);
+  if (payment_intent_id) {
+    const current_intent = await stripe.paymentIntents.retrieve(payment_intent_id);
 
-    const orderData = {
-        user: { connect: { id: 1 } },
-        amount: total,
-        currency: 'brl',
-        status: 'pending',
-        paymentIntentID: payment_intent_id,
-        products: {
-            create: items.map((item: Product) => {
-                return {
-                    name: item.name,
-                    description: item.description,
-                    quantity: item.quantity,
-                    price: item.price,
-                    image: item.image
-                }
-            })
-        }
-    }
+    if (current_intent) {
+      const updated_intent = await stripe.paymentIntents.update(payment_intent_id, {
+        amount: total
+      });
 
-    if (payment_intent_id) {
-        const current_intent = await stripe.paymentIntents.retrieve(payment_intent_id);
-        if (current_intent) {
-            const update_intent = await stripe.paymentIntents.update(payment_intent_id, {
-                amount: total
-            });
-
-            const [existing_order, updated_order] = await Promise.all([
-                prisma.order.findFirst({
-                    where: { paymentIntentID: payment_intent_id },
-                    include: {
-                        products: true
-                    }
-                }),
-                prisma.order.update({
-                    where: { paymentIntentID: payment_intent_id },
-                    data: {
-                        amount: total,
-                        products: {
-                            deleteMany: {},
-                            create: items.map((item: Product) => ({
-                                name: item.name,
-                                description: item.description,
-                                quantity: item.quantity,
-                                price: item.price,
-                                image: item.image
-                            }))
-                        }
-                    }
-                })
-            ]);
-
-            if (!existing_order) {
-                return new Response('Order not found', { status: 404 });
+      const [existing_order, updated_order] = await Promise.all([
+        prisma.order.findFirst({
+          where: { paymentIntentID: payment_intent_id },
+          include: { products: true }
+        }),
+        prisma.order.update({
+          where: { paymentIntentID: payment_intent_id },
+          data: {
+            amount: total,
+            products: {
+              deleteMany: {},
+              create: items.map((item: Product) => ({
+                name: item.name,
+                description: item.description,
+                quantity: item.quantity,
+                price: item.price,
+                image: item.image
+              }))
             }
+          }        
+        })
+      ]);
 
-            return NextResponse.json({ paymentIntent: update_intent }, { status: 200 });
-        }
-    } else {
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: calculateOrderAmount(items),
-            currency: 'brl',
-            automatic_payment_methods: { enabled: true }
-        });
+      if (!existing_order) {
+        return new Response("Order not found", { status: 404 });
+      }
 
-        orderData.paymentIntentID = paymentIntent.id;
-        const newOrder = await prisma.order.create({
-            data: orderData
-        });
-
-        return NextResponse.json({ paymentIntent }, { status: 200 });
+      return NextResponse.json({ paymentIntent: updated_intent }, { status: 200})
     }
-};
+
+  } else {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: calculateOrderAmount(items),
+      currency: 'brl',
+      automatic_payment_methods: { enabled: true },
+    });
+
+    orderData.paymentIntentID = paymentIntent.id;
+
+    const newOrder = await prisma.order.create({
+      data: orderData
+    })
+    
+    return NextResponse.json({ paymentIntent }, { status: 200})
+  }
+
+}
